@@ -37,6 +37,7 @@ with tab1:
             else:
                 db['Projects'].insert_one(
                     {"_id": projectName, "Location": projectLocation, "Start": projectStart, "materials": []})
+                projectsMaterial.insert_one({'_id': projectName})
                 st.success("Project created successfully!")
                 time.sleep(2)
                 st.experimental_rerun()
@@ -63,7 +64,7 @@ with tab2:
             for x in multiSelect:
                 amount[x] = st.number_input(f"How much of {x} was used?", value=0)
             if st.button("Submit"):
-                projects.update_one({'_id': projectSelection}, {'$push': {'materials': amount}})
+                projectsMaterial.update_one({'_id': projectSelection}, {'$push':amount})
                 # projectsMaterial.insert_one({"_id": area, "Projects_id": projectSelection, "materialUsed": amount})
                 st.experimental_rerun()
     # ---Add Material to DB---
@@ -83,13 +84,29 @@ with tab2:
 # ---Create df from---
 with tab3:
     getProject = st.selectbox("Select a project", selection)
-    reports = []
     createReport = list(projects.find({'_id': getProject}))
-    #getMaterials = list(projects.find({'materials':'object'}))
+    getMaterials = list(projectsMaterial.find({'_id': getProject}))
+    getCost = list(materials.find())
     for report in createReport:
-        reports.append(report)
-        df = pd.DataFrame(reports)
-        st.write(df)
-        #for item in reports:
-            #usedMaterial = item['materials']
+        createReport = report
+    for item in getMaterials:
+        createReport.update(item)
+        df = pd.DataFrame(createReport)
+        st.table(df)
+        if st.button("Generate totals"):
+            total = df[item].sum()
+            print(total)
+            df = df.append(total, ignore_index=True)
+            df = df.drop("_id", axis=1)
+            df = df.drop("Start", axis=1)
+            st.table(df)
+        file = df.to_csv()
+        st.download_button(
+            label="Generate Report",
+            data=file,
+            file_name=f"{getProject}.csv",
+            mime='text/csv')
+
+
+
 
