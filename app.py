@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import pandas as pd
 from pymongo import MongoClient
 from dotenv import load_dotenv, find_dotenv
 
@@ -19,7 +20,7 @@ materials = db['Materials']
 projectsMaterial = db['projectMaterial']
 
 # ---Create tabs, columns---
-tab1, tab2 = st.tabs(['Add Project', 'Add Project Material'])
+tab1, tab2, tab3 = st.tabs(['Add Project', 'Add Project Material', 'Create report'])
 
 # ---Add project----
 
@@ -58,11 +59,12 @@ with tab2:
         if "Select A Project" not in projectSelection:
             amount = {}
             multiSelect = st.multiselect("Select Material Used", material)
-            area = st.text_input("Please enter where this material was used in the project")
+            # area = st.text_input("Please enter where this material was used in the project")
             for x in multiSelect:
                 amount[x] = st.number_input(f"How much of {x} was used?", value=0)
             if st.button("Submit"):
-                projectsMaterial.insert_one({"_id": area, "Projects_id": projectSelection, "materialUsed": amount})
+                projects.update_one({'_id': projectSelection}, {'$push': {'materials': amount}})
+                # projectsMaterial.insert_one({"_id": area, "Projects_id": projectSelection, "materialUsed": amount})
                 st.experimental_rerun()
     # ---Add Material to DB---
     with col2:
@@ -78,3 +80,16 @@ with tab2:
                     st.success("Material added successfully!")
                     time.sleep(2)
                     st.experimental_rerun()
+# ---Create df from---
+with tab3:
+    getProject = st.selectbox("Select a project", selection)
+    reports = []
+    createReport = list(projects.find({'_id': getProject}))
+    #getMaterials = list(projects.find({'materials':'object'}))
+    for report in createReport:
+        reports.append(report)
+        df = pd.DataFrame(reports)
+        st.write(df)
+        #for item in reports:
+            #usedMaterial = item['materials']
+
