@@ -1,5 +1,5 @@
 streamlit~=1.17.0
 pandas~=1.5.3
-pymongo
+pymongo~=4.3.3
 openpyxl~=3.1.0
-streamlit
+python-dotenv~=0.21.1

@@ -1,17 +1,15 @@
 import streamlit as st
 import time
 import pandas as pd
+from streamlit_option_menu import option_menu
 from pymongo import MongoClient
 from dotenv import load_dotenv, find_dotenv
 
 # ---page setup---
 st.header("Project material tracker")
-st.subheader("Add project material data to a database and create a spreadsheet from the data")
-
 # ---config mongodb and connect to db---
 load_dotenv(find_dotenv())
 password = st.secrets["MONGOPW"]
-
 cluster = MongoClient(
     f"""mongodb+srv://ashehorn:{password}@cluster0.soozxfm.mongodb.net/?retryWrites=true&w=majority""")
 db = cluster["materialTracker"]
@@ -20,17 +18,19 @@ materials = db['Materials']
 projectsMaterial = db['projectMaterial']
 
 # ---Create tabs, columns---
-tab1, tab2, tab3 = st.tabs(['Add Project', 'Add Project Material', 'Create report'])
-
+menu = option_menu(
+    menu_title=None,
+    options=["Add Project", "Add Material", "Create Report"],
+    icons=["clipboard", "clipboard-plus", "file-earmark-arrow-down"],
+    orientation="horizontal",
+)
 # ---Add project----
-
-with tab1:
+if menu == "Add Project":
+    st.subheader("Add a project to start tracking materials")
     with st.form("addProject", clear_on_submit=True):
         projectName = st.text_input("Enter the project name")
         projectLocation = st.text_input("Please enter the facility for the project")
         projectStart = str(st.date_input("What date did the project start?"))
-        # projectEnd = st.date_input("What date did the project end?")
-        # projectLength = projectEnd - projectStart
         if st.form_submit_button("Submit"):
             if projects.count_documents({'_id': projectName}) != 0:
                 st.error("Project already exists!")
@@ -42,9 +42,9 @@ with tab1:
                 time.sleep(2)
                 st.experimental_rerun()
 
-with tab2:
+# ---Add Material to project---
+if menu == "Add Material":
     col1, col2 = st.columns(2)
-    # ---Add Material to project---
     with col1:
         st.subheader("Add material to a project")
         projectSelect = list(projects.find())
@@ -56,23 +56,21 @@ with tab2:
             selection.append(f"{project['_id']}")
         for item in findMaterials:
             material.append(f"{item['_id']}")
-        projectSelection = st.selectbox("Please select a Project", selection)
+        projectSelection = st.selectbox("Please select a Project", selection, key="projectSelection")
         if "Select A Project" not in projectSelection:
             amount = {}
-            multiSelect = st.multiselect("Select Material Used", material)
-            # area = st.text_input("Please enter where this material was used in the project")
+            multiSelect = st.multiselect("Select Material Used", material, key="multiSelect")
             for x in multiSelect:
-                amount[x] = st.number_input(f"How much of {x} was used?", value=0)
+                amount[x] = st.number_input(f"How much of {x} was used?",format="&i",value=0)
             if st.button("Submit"):
-                projectsMaterial.update_one({'_id': projectSelection}, {'$push':amount})
-                # projectsMaterial.insert_one({"_id": area, "Projects_id": projectSelection, "materialUsed": amount})
+                projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount})
                 st.experimental_rerun()
     # ---Add Material to DB---
     with col2:
-        st.subheader("Add a new material!")
+        st.subheader("Add a new material")
         with st.form("newMaterial", clear_on_submit=True):
             materialName = st.text_input("Enter material name: ")
-            materialCost = st.number_input("Enter material cost(Please leave out the $): ", value=0)
+            materialCost = st.number_input("Enter material cost (Please leave out the $): ", value=0)
             if st.form_submit_button("submit"):
                 if materials.count_documents({'_id': materialName}) != 0:
                     st.error("Material already exists!")
@@ -81,32 +79,27 @@ with tab2:
                     st.success("Material added successfully!")
                     time.sleep(2)
                     st.experimental_rerun()
-# ---Create df from---
-with tab3:
+# ---Create Report---
+if menu == "Create Report":
+    st.subheader("Generate a CSV file report for a project")
+    projectSelect = list(projects.find())
+    selection = ["Select A Project"]
+    for project in projectSelect:
+        selection.append(f"{project['_id']}")
     getProject = st.selectbox("Select a project", selection)
     createReport = list(projects.find({'_id': getProject}))
     getMaterials = list(projectsMaterial.find({'_id': getProject}))
-    getCost = list(materials.find())
+    get_cost = list(materials.find())
     for report in createReport:
         createReport = report
     for item in getMaterials:
         createReport.update(item)
-        df = pd.DataFrame(createReport)
-        st.table(df)
-        if st.button("Generate totals"):
-            total = df[item].sum()
-            print(total)
-            df = df.append(total, ignore_index=True)
-            df = df.drop("_id", axis=1)
-            df = df.drop("Start", axis=1)
-            st.table(df)
+        df = pd.DataFrame.from_dict(createReport, orient="index")
+        col1, col2, col3 = st.columns(3)
+        col2.dataframe(df)
         file = df.to_csv()
-        st.download_button(
+        col2.download_button(
             label="Generate Report",
             data=file,
             file_name=f"{getProject}.csv",
             mime='text/csv')
-
-
-
-
