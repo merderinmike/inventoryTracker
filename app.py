@@ -57,11 +57,12 @@ if menu == "Add Material":
         for item in findMaterials:
             material.append(f"{item['_id']}")
         projectSelection = st.selectbox("Please select a Project", selection, key="projectSelection")
+        location = st.text_input("Please enter the location where the material was used (Floor, building, etc.)", key="location")
         if "Select A Project" not in projectSelection:
             amount = {}
             multiSelect = st.multiselect("Select Material Used", material, key="multiSelect")
             for x in multiSelect:
-                amount[x] = st.number_input(f"How much of {x} was used?",format="&i",value=0)
+                amount[x] = st.number_input(f"How much of {x} was used?",value=0)
             if st.button("Submit"):
                 projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount})
                 st.experimental_rerun()
