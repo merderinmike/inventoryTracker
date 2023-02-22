@@ -64,7 +64,7 @@ if menu == "Add Material":
             for x in multiSelect:
                 amount[x] = st.number_input(f"How much of {x} was used?",value=0)
             if st.button("Submit"):
-                projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount})
+                projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount}, upsert=True)
                 st.experimental_rerun()
     # ---Add Material to DB---
     with col2:
