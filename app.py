@@ -4,6 +4,7 @@ import pandas as pd
 from streamlit_option_menu import option_menu
 from pymongo import MongoClient
 from dotenv import load_dotenv, find_dotenv
+import csv
 
 # ---page setup---
 st.header("Project material tracker")
@@ -20,32 +21,30 @@ projectsMaterial = db['projectMaterial']
 # ---Create tabs, columns---
 menu = option_menu(
     menu_title=None,
-    options=["Add Project", "Add Material", "Create Report"],
+    options=["Project", "Add Material", "Create Report"],
     icons=["clipboard", "clipboard-plus", "file-earmark-arrow-down"],
     orientation="horizontal",
 )
 # ---Add project----
-if menu == "Add Project":
-    st.subheader("Add a project to start tracking materials")
-    with st.form("addProject", clear_on_submit=True):
-        projectName = st.text_input("Enter the project name")
-        projectLocation = st.text_input("Please enter the facility for the project")
-        projectStart = str(st.date_input("What date did the project start?"))
-        if st.form_submit_button("Submit"):
-            if projects.count_documents({'_id': projectName}) != 0:
-                st.error("Project already exists!")
-            else:
-                db['Projects'].insert_one(
-                    {"_id": projectName, "Location": projectLocation, "Start": projectStart, "materials": []})
-                projectsMaterial.insert_one({'_id': projectName})
-                st.success("Project created successfully!")
-                time.sleep(2)
-                st.experimental_rerun()
-
-# ---Add Material to project---
-if menu == "Add Material":
+if menu == "Project":
     col1, col2 = st.columns(2)
     with col1:
+        st.subheader("Add a project to start tracking materials")
+        with st.form("addProject", clear_on_submit=True):
+            projectName = st.text_input("Enter the project name")
+            projectLocation = st.text_input("Please enter the facility for the project")
+            projectStart = str(st.date_input("What date did the project start?"))
+            if st.form_submit_button("Submit"):
+                if projects.count_documents({'_id': projectName}) != 0:
+                    st.error("Project already exists!")
+                else:
+                    db['Projects'].insert_one(
+                        {"_id": projectName, "Location": projectLocation, "Start": projectStart, "materials": []})
+                    projectsMaterial.insert_one({'_id': projectName})
+                    st.success("Project created successfully!")
+                    time.sleep(2)
+                    st.experimental_rerun()
+    with col2:
         st.subheader("Add material to a project")
         projectSelect = list(projects.find())
         findMaterials = list(materials.find())
@@ -57,7 +56,6 @@ if menu == "Add Material":
         for item in findMaterials:
             material.append(f"{item['_id']}")
         projectSelection = st.selectbox("Please select a Project", selection, key="projectSelection")
-        location = st.text_input("Please enter the location where the material was used (Floor, building, etc.)", key="location")
         if "Select A Project" not in projectSelection:
             amount = {}
             multiSelect = st.multiselect("Select Material Used", material, key="multiSelect")
@@ -66,9 +64,24 @@ if menu == "Add Material":
             if st.button("Submit"):
                 projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount}, upsert=True)
                 st.experimental_rerun()
-    # ---Add Material to DB---
+
+# ---Add Material to DB---
+if menu == "Add Material":
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("From spreadsheet")
+        with st.form("material_from_csv", clear_on_submit=True):
+            spreadsheet = st.file_uploader("Select a file to add material", type=['.csv'], key="spreadsheet")
+            submit = st.form_submit_button("Submit")
+            if submit:
+                file_name = spreadsheet.name
+                with open(f"{file_name}", 'r') as file:
+                    reader = csv.DictReader(file)
+                    for each in reader:
+                        materials.insert_one(each)
+
     with col2:
-        st.subheader("Add a new material")
+        st.subheader("Add Manually")
         with st.form("newMaterial", clear_on_submit=True):
             materialName = st.text_input("Enter material name: ")
             materialCost = st.number_input("Enter material cost (Please leave out the $): ", value=0)
@@ -80,6 +93,8 @@ if menu == "Add Material":
                     st.success("Material added successfully!")
                     time.sleep(2)
                     st.experimental_rerun()
+
+
 # ---Create Report---
 if menu == "Create Report":
     st.subheader("Generate a CSV file report for a project")
