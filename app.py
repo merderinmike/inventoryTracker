@@ -74,11 +74,10 @@ if menu == "Add Material":
             spreadsheet = st.file_uploader("Select a file to add material", type=['.csv'], key="spreadsheet")
             submit = st.form_submit_button("Submit")
             if submit:
-                file_name = spreadsheet.name
-                with open(f"{file_name}", 'r') as file:
-                    reader = csv.DictReader(file)
-                    for each in reader:
-                        materials.insert_one(each)
+                df = pd.read_csv(spreadsheet)
+                df_dict = df.to_dict("records")
+                for item in df_dict:
+                    materials.insert_one(item)
 
     with col2:
         st.subheader("Add Manually")
