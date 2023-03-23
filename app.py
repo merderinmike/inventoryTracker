@@ -62,6 +62,7 @@ if menu == "Project":
             for x in multiSelect:
                 amount[x] = st.number_input(f"How much of {x} was used?",value=0)
             if st.button("Submit"):
+                st.success("material successfully added to project")
                 projectsMaterial.update_one({'_id': projectSelection}, {'$inc': amount}, upsert=True)
                 st.experimental_rerun()
 
